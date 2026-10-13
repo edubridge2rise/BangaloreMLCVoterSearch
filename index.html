@@ -43,6 +43,14 @@
   mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 1px; }
   .epic { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .02em; }
   footer { color: var(--muted); font-size: .85rem; margin-top: 30px; }
+  /* candidate strip, pinned to the bottom of the screen on every device */
+  .ballot { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: flex; justify-content: center;
+            background: var(--bg); border-top: 1px solid var(--line);
+            padding: 6px max(8px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+            box-shadow: 0 -4px 14px rgba(0,0,0,.12); }
+  .ballot img { display: block; width: 100%; max-width: 760px; height: auto; max-height: 18vh;
+                object-fit: contain; border-radius: 6px; }
+  body { padding-bottom: calc(min(100vw, 776px) * 168 / 1018 + 24px); }
   @media (max-width: 480px) { dl { grid-template-columns: 1fr; gap: 0; } dt { margin-top: 6px; } }
 </style>
 </head>
@@ -60,6 +68,9 @@
 
   <footer>Data extracted from the published electoral roll PDFs. If your details look wrong, check the official roll.</footer>
 </main>
+
+<div class="ballot"><img src="window.jpeg" width="1018" height="168"
+  alt="Ballot: Sl No 4, Umesh Babu Pillegowda, symbol I"></div>
 
 <script src="data.js"></script>
 <script>
