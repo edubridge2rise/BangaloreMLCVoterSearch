@@ -38,6 +38,8 @@
   dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 10px 0 0; font-size: .95rem; }
   dt { color: var(--muted); }
   dd { margin: 0; overflow-wrap: anywhere; }
+  .maplink { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+  .maplink:hover { text-decoration-thickness: 2px; }
   mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 1px; }
   .epic { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .02em; }
   footer { color: var(--muted); font-size: .85rem; margin-top: 30px; }
@@ -125,12 +127,19 @@
           <span>${r[8] === "D" ? '<span class="badge warn">Deleted in roll</span> ' : r[8] === "M" ? '<span class="badge">Modified (#)</span> ' : ""}<span class="badge">Part ${r[5]} · Sl No ${r[6]}</span></span></div>
         <dl>
           <dt>Constituency</dt><dd>${esc(window.PLACES[r[7]])}</dd>
+          <dt>Location details</dt><dd>${booth(r[5])}</dd>
           <dt>Guardian</dt><dd>${esc(r[1]) || "—"}</dd>
           <dt>Address</dt><dd>${esc(r[2]) || "—"}</dd>
           <dt>Institution</dt><dd>${esc(r[3]) || "—"}</dd>
           <dt>EPIC No</dt><dd class="epic">${esc(r[4]) || "—"}</dd>
         </dl>
       </div>`).join("");
+  }
+
+  function booth(part) {
+    const b = (window.BOOTHS || {})[part];
+    if (!b) return "—";
+    return `<a class="maplink" href="${esc(b[1])}" target="_blank" rel="noopener">${esc(b[0])} <span aria-hidden="true">↗</span></a>`;
   }
 
   let timer;
