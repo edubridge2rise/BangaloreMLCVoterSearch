@@ -77,7 +77,6 @@
   <footer>Data extracted from the published electoral roll PDFs. If your details look wrong, check the official roll.</footer>
 </main>
 
-<script src="data.js"></script>
 <script>
 (function () {
   // Keep the bar on screen. Phones (esp. iPhone Safari) scroll the page under "fixed" elements when the
@@ -99,24 +98,65 @@
   if (vv) { vv.addEventListener("resize", place); vv.addEventListener("scroll", place); }
   place();
 
+  // Apps Script web app: hands out the key for data.bin (and nothing else is needed per search)
+  const API_URL = "https://script.google.com/macros/s/AKfycbzUErI_zOW-pBAi5g-N-s8Bss5M_OW7tXvDoEidCnTlzbToqEpQymNyzPta7Hbo-DVf/exec";
   const MAX = 50;
+  const KEY_STORE = "vs_key";
+
   const qEl = document.getElementById("q"), placeEl = document.getElementById("place");
   const statusEl = document.getElementById("status"), out = document.getElementById("results");
-  const norm = s => s.toUpperCase().replace(/[^A-Z0-9ಀ-೿]+/g, " ").trim();
+  const norm = s => String(s).toUpperCase().replace(/[^A-Z0-9\u0C80-\u0CFF]+/g, " ").trim();
+  const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const IDLE = "Type at least 3 letters of your name, or your EPIC number.";
 
-  // [name, guardian, address, institution, epic, part, slNo, placeIndex, status D/M/'']
-  const rows = window.VOTERS.map(r => {
-    const n = norm(r[0]);
-    return { r, tokens: n.split(" "), compact: n.replace(/ /g, ""), epic: r[4].toUpperCase().replace(/[^A-Z0-9]/g, "") };
-  });
-  window.PLACES.map((p, i) => [p, i]).sort((a, b) => a[0].localeCompare(b[0])).forEach(([p, i]) => {
-    const o = document.createElement("option"); o.value = i; o.textContent = p; placeEl.appendChild(o);
-  });
-  statusEl.textContent = rows.length.toLocaleString() + " voters. Type at least 3 letters to search.";
+  let rows = null, PLACES = [], BOOTHS = {};
 
+  // ---------- loading: encrypted data + key, fetched in parallel; key remembered on this device ----------
+  const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  const store = { get() { try { return localStorage.getItem(KEY_STORE); } catch (e) { return null; } },
+                  set(v) { try { localStorage.setItem(KEY_STORE, v); } catch (e) {} },
+                  clear() { try { localStorage.removeItem(KEY_STORE); } catch (e) {} } };
+  const fetchKey = () => fetch(API_URL + "?action=key").then(r => r.json()).then(j => j.key);
+
+  async function decrypt(buf, keyB64) {
+    const key = await crypto.subtle.importKey("raw", b64(keyB64), "AES-GCM", false, ["decrypt"]);
+    const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: buf.slice(0, 12) }, key, buf.slice(12));
+    const text = await new Response(new Blob([plain]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+    return JSON.parse(text);
+  }
+
+  async function load() {
+    statusEl.textContent = "Loading voter list…";
+    const dataP = fetch("data.bin", { cache: "no-cache" }).then(r => r.arrayBuffer());
+    let keyB64 = store.get();
+    const keyP = keyB64 ? Promise.resolve(keyB64) : fetchKey();
+    const buf = await dataP;
+    let data;
+    try {
+      data = await decrypt(buf, await keyP);
+    } catch (e) {             // remembered key is out of date: get a fresh one
+      store.clear();
+      keyB64 = await fetchKey();
+      data = await decrypt(buf, keyB64);
+      keyP.then(() => {}, () => {});
+    }
+    store.set(keyB64 || await keyP);
+    PLACES = data.places; BOOTHS = data.booths;
+    // [name, guardian, address, institution, epic, part, slNo, placeIndex, status D/M/'']
+    rows = data.voters.map(r => {
+      const n = norm(r[0]);
+      return { r, tokens: n.split(" "), compact: n.replace(/ /g, ""), epic: String(r[4]).toUpperCase().replace(/[^A-Z0-9]/g, "") };
+    });
+    PLACES.map((p, i) => [p, i]).sort((a, b) => a[0].localeCompare(b[0])).forEach(([p, i]) => {
+      const o = document.createElement("option"); o.value = i; o.textContent = p; placeEl.appendChild(o);
+    });
+    statusEl.textContent = IDLE;
+    if (qEl.value) render();
+  }
+
+  // ---------- search (runs in the browser, instant) ----------
   function score(row, qTokens, qCompact, qEpic) {
     if (qEpic && row.epic && row.epic.includes(qEpic)) return 5;
-    // every typed word must start one of the words in the name, in any order (handles "N Ananda" vs "Ananda N")
     const used = new Set();
     let all = true;
     for (const t of qTokens) {
@@ -125,27 +165,33 @@
       used.add(i);
     }
     if (all) return row.tokens.length === qTokens.length ? 4 : 3;
-    if (qCompact.length >= 4 && row.compact.includes(qCompact)) return 2;   // "ajithkumar" vs "Ajith Kumar"
+    if (qCompact.length >= 4 && row.compact.includes(qCompact)) return 2;
     return 0;
   }
 
-  const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   function highlight(name, qTokens) {
-    return name.split(/(\s+)/).map(w => {
+    return String(name).split(/(\s+)/).map(w => {
       const W = norm(w), t = qTokens.find(t => t && W.startsWith(t));
       return t ? "<mark>" + esc(w.slice(0, t.length)) + "</mark>" + esc(w.slice(t.length)) : esc(w);
     }).join("");
   }
 
+  function booth(part) {
+    const b = BOOTHS[part];
+    if (!b) return "—";
+    return `<a class="maplink" href="${esc(b[1])}" target="_blank" rel="noopener">${esc(b[0])} <span aria-hidden="true">↗</span></a>`;
+  }
+
   function render() {
-    const raw = qEl.value, q = norm(raw), place = placeEl.value;
-    if (q.replace(/ /g, "").length < 3) {
+    if (!rows) return;
+    const q = norm(qEl.value), place = placeEl.value;
+    if (q.replace(/[0-9 ]/g, "").length < 3 && q.replace(/ /g, "").length < 8) {
       out.innerHTML = "";
-      statusEl.textContent = rows.length.toLocaleString() + " voters. Type at least 3 letters to search.";
+      statusEl.textContent = IDLE;
       return;
     }
     const qTokens = q.split(" "), qCompact = q.replace(/ /g, "");
-    const qEpic = /\d/.test(qCompact) && qCompact.length >= 4 ? qCompact : "";
+    const qEpic = /\d/.test(qCompact) && qCompact.length >= 8 ? qCompact : "";
     const hits = [];
     for (const row of rows) {
       if (place !== "" && row.r[7] !== +place) continue;
@@ -162,7 +208,7 @@
         <div class="top"><span class="name">${highlight(r[0], qTokens)}</span>
           <span>${r[8] === "D" ? '<span class="badge warn">Deleted in roll</span> ' : r[8] === "M" ? '<span class="badge">Modified (#)</span> ' : ""}<span class="badge">Part ${r[5]} · Sl No ${r[6]}</span></span></div>
         <dl>
-          <dt>Constituency</dt><dd>${esc(window.PLACES[r[7]])}</dd>
+          <dt>Constituency</dt><dd>${esc(PLACES[r[7]])}</dd>
           <dt>Location details</dt><dd>${booth(r[5])}</dd>
           <dt>Guardian</dt><dd>${esc(r[1]) || "—"}</dd>
           <dt>Address</dt><dd>${esc(r[2]) || "—"}</dd>
@@ -172,15 +218,10 @@
       </div>`).join("");
   }
 
-  function booth(part) {
-    const b = (window.BOOTHS || {})[part];
-    if (!b) return "—";
-    return `<a class="maplink" href="${esc(b[1])}" target="_blank" rel="noopener">${esc(b[0])} <span aria-hidden="true">↗</span></a>`;
-  }
-
   let timer;
   qEl.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(render, 120); });
   placeEl.addEventListener("change", render);
+  load().catch(() => { statusEl.textContent = "Could not load the voter list. Check your connection and reload the page."; });
 })();
 </script>
 </body>
