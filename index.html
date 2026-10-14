@@ -57,6 +57,11 @@
   :root { --bh: 150px; }   /* height of the bar; set exactly by the script */
   main { padding-top: calc(var(--bh) + 20px); }
   html { scroll-padding-top: var(--bh); }
+  /* campaign banner: shown on the landing screen, hidden while search results are on screen */
+  .banner { margin: 8px auto 0; max-width: 520px; }
+  .banner img { display: block; width: 100%; height: auto; border-radius: 14px;
+                border: 1px solid var(--line); box-shadow: 0 6px 22px rgba(0,0,0,.14); }
+  .banner[hidden] { display: none; }
 </style>
 </head>
 <body>
@@ -73,6 +78,11 @@
 
   <div class="status" id="status">Loading…</div>
   <div id="results"></div>
+
+  <figure class="banner" id="banner">
+    <img src="banner.jpg" width="1038" height="1276" decoding="async"
+         alt="Bangalore Teachers' Constituency MLC Election 2026: Umesh Babu Pillegowda, A Teacher for Teachers">
+  </figure>
 
   <footer>Data extracted from the published electoral roll PDFs. If your details look wrong, check the official roll.</footer>
 </main>
@@ -106,6 +116,7 @@
 
   const qEl = document.getElementById("q"), placeEl = document.getElementById("place");
   const statusEl = document.getElementById("status"), out = document.getElementById("results");
+  const bannerEl = document.getElementById("banner");
   const norm = s => String(s).toUpperCase().replace(/[^A-Z0-9\u0C80-\u0CFF]+/g, " ").trim();
   const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const IDLE = "Type at least 3 letters of your name, or your EPIC number.";
@@ -201,8 +212,10 @@
     if (q.replace(/[0-9 ]/g, "").length < 3 && q.replace(/ /g, "").length < 8) {
       out.innerHTML = "";
       statusEl.textContent = IDLE;
+      bannerEl.hidden = false;
       return;
     }
+    bannerEl.hidden = true;
     const qTokens = q.split(" "), qCompact = q.replace(/ /g, "");
     const qEpic = /\d/.test(qCompact) && qCompact.length >= 8 ? qCompact : "";
     const hits = [];
