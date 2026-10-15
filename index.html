@@ -47,7 +47,7 @@
             will-change: transform; }
   .topbar::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 4px;   /* Karnataka flag band */
                     background: linear-gradient(90deg, var(--ka-yellow) 0 50%, var(--ka-red) 50% 100%); }
-  .topbar img { display: block; width: 100%; max-width: 760px; height: auto; max-height: 18vh;
+  .topbar img { display: block; width: 100%; max-width: 1100px; height: auto; max-height: 30vh;
                 object-fit: contain; border-radius: 6px; margin: 0 auto; }
   .search { display: flex; gap: 8px; max-width: 788px; margin: 0 auto; padding: 8px 0 2px; }
   .search input, .search select {
@@ -64,14 +64,15 @@
   /* heading */
   .hero { display: flex; gap: 14px; align-items: center; }
   .hero img { width: 54px; height: 54px; flex: none; }
-  h1 { font-size: 1.55rem; line-height: 1.2; margin: 0; }
-  .hero .kn { color: var(--accent); font-weight: 700; font-size: 1.02rem; margin: 2px 0 0; }
+  h1, .hero .kn { font-family: "Noto Sans Kannada", "Noto Sans", sans-serif; font-size: 1.15rem; font-weight: 700;
+                  line-height: 1.35; margin: 0; }
+  .hero .kn { color: var(--accent); margin-top: 2px; }
   .sub { color: var(--muted); margin: 10px 0 0; }
   .facts { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
   .facts li { background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 3px 11px;
               font-size: .86rem; color: var(--muted); }
   .facts b { color: var(--text); font-weight: 600; }
-  .status { color: var(--muted); font-size: .92rem; margin: 16px 0 14px; min-height: 1.3em; }
+  .status { color: var(--muted); font-size: .92rem; margin: 0 0 14px; min-height: 1.3em; }
 
   /* landing: how to use */
   .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 0 0 8px; padding: 0; list-style: none; counter-reset: s; }
@@ -106,9 +107,10 @@
   footer p { margin: 0 0 8px; }
   footer a { color: var(--link); }
   /* campaign poster: on the landing screen only, hidden while search results are showing */
-  .poster { margin: 18px auto 0; max-width: 480px; }
-  .poster img { display: block; width: 100%; height: auto; border-radius: 14px;
+  .poster { margin: 18px 0 0; display: grid; grid-template-columns: 1fr 2fr; gap: 12px; align-items: center; }
+  .poster img { display: block; width: 100%; height: auto; border-radius: 14px; background: #fff;
                 border: 1px solid var(--line); box-shadow: 0 8px 26px rgba(0,0,0,.14); }
+  @media (max-width: 420px) { .poster { grid-template-columns: 1fr; } }
   .poster[hidden] { display: none; }
   .facts li.date { border-color: var(--accent); color: var(--accent); }
 </style>
@@ -122,6 +124,7 @@
   </div>
 </header>
 <main>
+  <div class="status" id="status" role="status">Loading…</div>
   <div class="hero">
     <img src="favicon.svg" width="54" height="54" alt="">
     <div>
@@ -129,13 +132,13 @@
       <p class="kn" lang="kn">ಮತದಾರರ ಪಟ್ಟಿಯಲ್ಲಿ ನಿಮ್ಮ ಹೆಸರು ಹುಡುಕಿ</p>
     </div>
   </div>
-  <p class="sub">Bangalore Teachers' Constituency · Karnataka Legislative Council (MLC) Election 2026</p>
+  <p class="sub">Bangalore Teachers' Constituency<br>Karnataka Legislative Council (MLC) Election 2026</p>
   <ul class="facts" id="facts"><li class="date">Polling: <b>Fri 23 Oct 2026</b>, 8 am – 4 pm</li></ul>
 
-  <div class="status" id="status" role="status">Loading…</div>
   <div id="results"></div>
   <figure class="poster" id="poster">
-    <img src="poster.jpg" width="1067" height="1475" decoding="async"
+    <img src="salute.jpg" width="1220" height="1131" decoding="async" alt="Umesh Babu Pillegowda greeting with folded hands">
+    <img src="poster.jpg" width="1086" height="479" decoding="async"
          alt="Manifesto commitments and model ballot paper: Sl No 4, Umesh Babu Pillegowda. Polling on 23-10-2026, 8 am to 4 pm">
   </figure>
 
@@ -310,9 +313,6 @@
     PLACES.map((p, i) => [p, i]).sort((a, b) => a[0].localeCompare(b[0])).forEach(([p, i]) => {
       const o = document.createElement("option"); o.value = i; o.textContent = p; placeEl.appendChild(o);
     });
-    const parts = new Set(data.voters.map(r => r[5])).size;
-    factsEl.innerHTML += `<li><b>${rows.length.toLocaleString("en-IN")}</b> voters</li>` +
-      `<li><b>${PLACES.length}</b> constituencies</li><li><b>${parts}</b> polling stations</li>`;
     statusEl.textContent = IDLE;
     if (qEl.value) render();
   }
@@ -345,18 +345,24 @@
     return `<a class="maplink" href="${esc(b[1])}" target="_blank" rel="noopener" data-part="${part}" data-place="${placeIdx}">${esc(b[0])} <span aria-hidden="true">↗</span></a>`;
   }
 
-  // one "search" event once the person stops typing: result count and constituency only, never the text
-  let searchTimer, lastLogged = "";
-  function logSearch(q, hits) {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-      const key = q + "|" + placeEl.value;
-      if (key === lastLogged) return;
-      lastLogged = key;
-      track.send({ e: "search", n: hits.length, d1: placeEl.value === "" ? "All" : PLACES[+placeEl.value],
-                   d2: hits.length ? PLACES[hits[0][1].r[7]] : "", src: /\d/.test(q) ? "epic" : "name" });
-    }, 1500);
+  // A "search" event for every attempt: sent when typing pauses (no Enter needed), when the box loses focus
+  // or the page is hidden, even before the list has loaded or when too few letters were typed.
+  // Only the outcome is sent (result count, constituency, kind of search), never the text typed.
+  let attemptTimer, lastLogged = "", lastHits = null;
+  function logAttempt() {
+    clearTimeout(attemptTimer);
+    const q = norm(qEl.value);
+    if (!q) return;
+    const key = q + "|" + placeEl.value;
+    if (key === lastLogged) return;
+    lastLogged = key;
+    const tooShort = q.replace(/[0-9 ]/g, "").length < 3 && q.replace(/ /g, "").length < 8;
+    const outcome = !rows ? "list not loaded yet" : tooShort ? "too short" : !lastHits || !lastHits.length ? "no match" : PLACES[lastHits[0][1].r[7]];
+    track.send({ e: "search", n: rows && !tooShort && lastHits ? lastHits.length : 0,
+                 d1: placeEl.value === "" ? "All" : PLACES[+placeEl.value] || "", d2: outcome,
+                 src: /\d/.test(q) ? "epic" : "name" });
   }
+  const scheduleAttempt = () => { clearTimeout(attemptTimer); attemptTimer = setTimeout(logAttempt, 1000); };
 
   // landing-only blocks (steps, poster): either may be removed from the page
   const showLanding = on => [stepsEl, posterEl].forEach(el => { if (el) el.hidden = !on; });
@@ -368,7 +374,7 @@
       out.innerHTML = "";
       statusEl.textContent = IDLE;
       showLanding(true);
-      clearTimeout(searchTimer);
+      lastHits = null;
       return;
     }
     showLanding(false);
@@ -381,7 +387,7 @@
       if (s) hits.push([s, row]);
     }
     hits.sort((a, b) => b[0] - a[0] || a[1].r[0].localeCompare(b[1].r[0]));
-    logSearch(q, hits);
+    lastHits = hits;
     window.scrollTo(0, 0);   // new search: show the first results right under the bar
     statusEl.textContent = hits.length === 0 ? "No match. Try fewer letters, or only your first name."
       : hits.length > MAX ? `${hits.length.toLocaleString("en-IN")} matches. Showing the first ${MAX}; add your initial or pick a constituency to narrow it.`
@@ -407,8 +413,10 @@
   });
 
   let timer;
-  qEl.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(render, 120); });
-  placeEl.addEventListener("change", render);
+  qEl.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(render, 120); scheduleAttempt(); });
+  placeEl.addEventListener("change", () => { render(); scheduleAttempt(); });
+  qEl.addEventListener("blur", logAttempt);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") logAttempt(); });
   const t0 = performance.now();
   load().then(() => track.ready.then(() => track.send({ e: "loaded", n: Math.round(performance.now() - t0) })))
     .catch(e => {
