@@ -107,11 +107,10 @@
   footer p { margin: 0 0 8px; }
   footer a { color: var(--link); }
   /* campaign poster: on the landing screen only, hidden while search results are showing */
-  .poster { margin: 18px 0 0; display: grid; grid-template-columns: 1fr 2fr; gap: 12px; align-items: center; }
+  .poster { margin: 18px 0 0; }
   .poster img { display: block; width: 100%; height: auto; border-radius: 14px; background: #fff;
                 border: 1px solid var(--line); box-shadow: 0 8px 26px rgba(0,0,0,.14); }
-  @media (max-width: 420px) { .poster { grid-template-columns: 1fr; } }
-  .poster[hidden] { display: none; }
+  .landing[hidden] { display: none; }
   .facts li.date { border-color: var(--accent); color: var(--accent); }
 </style>
 </head>
@@ -125,31 +124,27 @@
 </header>
 <main>
   <div class="status" id="status" role="status">Loading…</div>
-  <div class="hero">
+  <div class="hero landing">
     <img src="favicon.svg" width="54" height="54" alt="">
     <div>
       <h1>Find your name in the voter list</h1>
       <p class="kn" lang="kn">ಮತದಾರರ ಪಟ್ಟಿಯಲ್ಲಿ ನಿಮ್ಮ ಹೆಸರು ಹುಡುಕಿ</p>
     </div>
   </div>
-  <p class="sub">Bangalore Teachers' Constituency<br>Karnataka Legislative Council (MLC) Election 2026</p>
-  <ul class="facts" id="facts"><li class="date">Polling: <b>Fri 23 Oct 2026</b>, 8 am – 4 pm</li></ul>
+  <p class="sub landing">Bangalore Teachers' Constituency<br>Karnataka Legislative Council (MLC) Election 2026</p>
+  <ul class="facts landing" id="facts"><li class="date">Polling: <b>Fri 23 Oct 2026</b>, 8 am – 4 pm</li></ul>
 
   <div id="results"></div>
-  <figure class="poster" id="poster">
-    <img src="salute.jpg" width="1220" height="1131" decoding="async" alt="Umesh Babu Pillegowda greeting with folded hands">
-    <img src="poster.jpg" width="1086" height="479" decoding="async"
-         alt="Manifesto commitments and model ballot paper: Sl No 4, Umesh Babu Pillegowda. Polling on 23-10-2026, 8 am to 4 pm">
+  <figure class="poster landing" id="poster">
+    <img src="poster.jpg" width="1600" height="706" decoding="async"
+         alt="My manifesto commitments: health insurance for all teachers; equal work, equal pay; teachers' co-operative society with emergency loans and low-interest housing finance. Umesh Babu Pillegowda with folded hands">
   </figure>
 
   <footer>
-    <p>Prepared by volunteers from the final electoral roll of the Bangalore Teachers' Constituency. This is not an official
+    <p>Prepared by volunteers of Umesh Babu Pillegowda's Team from the final electoral roll of the Bangalore Teachers' Constituency. This is not an official
       Election Commission service: if your details look wrong, check the official roll at
       <a href="https://ceo.karnataka.gov.in" target="_blank" rel="noopener">ceo.karnataka.gov.in</a> or call the Voter Helpline <a href="tel:1950">1950</a>.</p>
-    <p>Usage statistics: this site records anonymous visit information (device type, browser, approximate city from your
-      internet address, how you reached the site and how many results a search found) to see how it is used. The names and
-      numbers you type are never sent. Browsers with "Do Not Track" turned on are not recorded.</p>
-  </footer>
+    </footer>
 </main>
 
 <script src="data.js"></script>
@@ -364,8 +359,8 @@
   }
   const scheduleAttempt = () => { clearTimeout(attemptTimer); attemptTimer = setTimeout(logAttempt, 1000); };
 
-  // landing-only blocks (steps, poster): either may be removed from the page
-  const showLanding = on => [stepsEl, posterEl].forEach(el => { if (el) el.hidden = !on; });
+  // landing-only blocks (heading, subtitle, polling date, steps, poster): hidden while results are showing
+  const showLanding = on => document.querySelectorAll(".landing, #steps").forEach(el => { el.hidden = !on; });
 
   function render() {
     if (!rows) return;
