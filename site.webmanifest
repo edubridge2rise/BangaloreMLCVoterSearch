@@ -1,0 +1,13 @@
+{
+  "name": "Voter Search · Bangalore Teachers' Constituency",
+  "short_name": "Voter Search",
+  "start_url": "./?src=homescreen",
+  "display": "standalone",
+  "background_color": "#faf6ec",
+  "theme_color": "#faf6ec",
+  "icons": [
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
