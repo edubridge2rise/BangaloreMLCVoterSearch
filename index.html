@@ -358,17 +358,20 @@
     }, 1500);
   }
 
+  // landing-only blocks (steps, poster): either may be removed from the page
+  const showLanding = on => [stepsEl, posterEl].forEach(el => { if (el) el.hidden = !on; });
+
   function render() {
     if (!rows) return;
     const q = norm(qEl.value), place = placeEl.value;
     if (q.replace(/[0-9 ]/g, "").length < 3 && q.replace(/ /g, "").length < 8) {
       out.innerHTML = "";
       statusEl.textContent = IDLE;
-      stepsEl.hidden = posterEl.hidden = false;
+      showLanding(true);
       clearTimeout(searchTimer);
       return;
     }
-    stepsEl.hidden = posterEl.hidden = true;
+    showLanding(false);
     const qTokens = q.split(" "), qCompact = q.replace(/ /g, "");
     const qEpic = /\d/.test(qCompact) && qCompact.length >= 8 ? qCompact : "";
     const hits = [];
